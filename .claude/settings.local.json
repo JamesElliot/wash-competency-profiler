@@ -7,7 +7,10 @@
       "Bash(npx tsc *)",
       "Bash(node -e \"require\\('@tailwindcss/vite'\\); console.log\\('ok'\\)\")",
       "Bash(node -e \"const tw = require\\('tailwindcss/package.json'\\); console.log\\(tw.version\\)\")",
-      "mcp__Claude_in_Chrome__tabs_context_mcp"
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(node -e \"console.log\\(require\\('/Users/jamesebrown/Code/WASH Competencies/node_modules/vite/package.json'\\).version\\)\")",
+      "Bash(node -e \"const p = require\\('/Users/jamesebrown/Code/WASH Competencies/node_modules/jspdf/package.json'\\); console.log\\(p.version\\)\")",
+      "Bash(node -e \"const p = require\\('/Users/jamesebrown/Code/WASH Competencies/node_modules/recharts/package.json'\\); console.log\\(p.version\\)\")"
     ]
   }
 }

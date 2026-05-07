@@ -86,6 +86,33 @@ function LikertScale({ name, value, onChange, labels, ariaLabel }: LikertProps) 
   );
 }
 
+// ── FeedbackLink ──────────────────────────────────────────────────────────────
+
+const REPO = 'JamesElliot/wash-competency-profiler';
+
+function FeedbackLink({ competencyId, competencyLabel }: { competencyId: string; competencyLabel: string }) {
+  const title = encodeURIComponent(`Feedback: ${competencyId}`);
+  const body = encodeURIComponent(
+    `**Competency:** ${competencyId}\n**Description:** ${competencyLabel}\n\n---\n\n**My feedback:**\n\n<!-- Please describe your suggested change, correction, or comment below -->\n`,
+  );
+  const url = `https://github.com/${REPO}/issues/new?title=${title}&body=${body}&labels=competency-feedback`;
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Submit feedback for ${competencyId}`}
+      title="Suggest a change or correction"
+      className="flex-shrink-0 text-gray-300 hover:text-primary-500 transition-colors mt-0.5"
+    >
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18m0-14.25L7.5 5.5 12 7.75 16.5 5.5 21 7.75V18l-4.5-2.25L12 18l-4.5-2.25L3 18V7.75z" />
+      </svg>
+    </a>
+  );
+}
+
 // ── CompetencyCard ────────────────────────────────────────────────────────────
 
 function CompetencyCard({ item }: { item: CompetencyItem }) {
@@ -139,9 +166,10 @@ function CompetencyCard({ item }: { item: CompetencyItem }) {
         <span className="flex-shrink-0 font-mono text-xs text-gray-400 mt-0.5 pt-px">
           {item.id}
         </span>
-        <p id={`label-${item.id}`} className="text-gray-900 font-medium leading-relaxed">
+        <p id={`label-${item.id}`} className="text-gray-900 font-medium leading-relaxed flex-1">
           {item.label}
         </p>
+        <FeedbackLink competencyId={item.id} competencyLabel={item.label} />
       </div>
 
       {/* Skip checkbox */}

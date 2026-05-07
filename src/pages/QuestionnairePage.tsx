@@ -45,12 +45,28 @@ export default function QuestionnairePage() {
     <div className="min-h-screen bg-gray-50">
       {/* Sticky progress bar */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <ProgressBar
-            current={currentIndex + 1}
-            total={domainIds.length}
-            domainLabel={domainMeta?.label ?? currentDomainId}
-          />
+        <div className="max-w-2xl mx-auto px-4 py-2 flex items-center gap-3">
+          <button
+            onClick={() => {
+              if (state.responses.length === 0 || confirm('Go back to setup? Your responses are saved and you can continue later.')) {
+                navigate('/setup');
+              }
+            }}
+            className="text-gray-400 hover:text-primary-600 transition-colors flex items-center gap-1 text-xs font-medium flex-shrink-0"
+            aria-label="Back to setup"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Setup
+          </button>
+          <div className="flex-1">
+            <ProgressBar
+              current={currentIndex + 1}
+              total={domainIds.length}
+              domainLabel={domainMeta?.label ?? currentDomainId}
+            />
+          </div>
         </div>
       </div>
 

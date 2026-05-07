@@ -60,7 +60,19 @@ export default function SetupPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Top bar */}
       <div className="bg-primary-700 py-4 px-6">
-        <span className="text-white font-semibold text-lg">WASH Competency Profiler</span>
+        <div className="max-w-2xl mx-auto flex items-center gap-4">
+          <button
+            onClick={() => navigate('/')}
+            className="text-primary-200 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
+            aria-label="Back to home"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Back
+          </button>
+          <span className="text-white font-semibold text-lg">Assessment setup</span>
+        </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-10 space-y-10">
