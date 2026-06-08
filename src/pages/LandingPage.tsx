@@ -14,7 +14,9 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-700 to-primary-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-700 to-primary-900 flex flex-col items-center justify-center px-4 py-10 gap-6">
+
+      {/* ── Main card ─────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-10 text-center">
 
         {/* Logo mark */}
@@ -66,6 +68,48 @@ export default function LandingPage() {
           No account required. Your responses are saved locally in your browser.
         </p>
       </div>
+
+      {/* ── Attribution card ──────────────────────────────────── */}
+      <div className="max-w-xl w-full bg-white/10 rounded-xl px-6 py-5 text-white/80 text-xs leading-relaxed space-y-3">
+
+        {/* Framework attribution + link */}
+        <p>
+          This app is based on the{' '}
+          <a
+            href="https://redr.org.uk/publication/wash-competency-framework-for-low-resource-contexts/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-white transition-colors"
+          >
+            Humanitarian WASH Competency Technical Framework
+          </a>
+          , developed under the WASH Roadmap Initiative. The app was developed by{' '}
+          James Brown, Dahdaleh Institute for Global Health Research, York University.
+        </p>
+
+        {/* DoS disclaimer */}
+        <p>
+          The original framework on which the app is built was funded in part by a
+          cooperative agreement (PRO-WASH &amp; SCALE) from the United States Department
+          of State. The opinions, findings, and conclusions stated herein are those of
+          the author(s) and do not necessarily reflect those of the United States
+          Department of State.
+        </p>
+
+        {/* Contributor credits */}
+        <p>
+          <span className="text-white/60 uppercase tracking-wide text-[10px] font-semibold">Framework contributors</span>
+          <br />
+          James Brown (Excreta Management), Ravjot Chana (Excreta Management),
+          Catherine Darriulat (Safe Water Supply and Vector Control), Lauren Enochs
+          (Hygiene), Nicole Weber (Coordination and Hygiene), and Christian Zurbrugg
+          (Solid Waste Management). Guidance and reviews provided by Francois Baillon,
+          Syed Imran Ali, Baudoin Luce, Alexandra Machado, Mari Paz Ortega, and
+          Guillaume Pierrehumbert.
+        </p>
+
+      </div>
+
     </div>
   );
 }

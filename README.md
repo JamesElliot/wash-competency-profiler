@@ -8,7 +8,7 @@ A structured self-assessment tool for humanitarian WASH practitioners. Evaluate 
 
 ## Features
 
-- **217 competencies** across 6 WASH domains (Core, Hygiene Promotion, Vector Control, Excreta Management, Safe Water Supply, Solid Waste Management)
+- **219 competencies** across 6 WASH domains (Core, Hygiene Promotion, Vector Control, Excreta Management, Safe Water Supply, Solid Waste Management)
 - **Dual Likert scales** — rate both your current competence level and the importance of each competency to your role
 - **Radar chart visualisation** — per-domain competency profiles with competence vs. importance overlay
 - **Priority scoring** — automatically surfaces high-priority development gaps (high importance, low competence)
@@ -22,11 +22,11 @@ A structured self-assessment tool for humanitarian WASH practitioners. Evaluate 
 
 | ID | Domain | Items |
 |----|--------|-------|
-| CORE | Core humanitarian WASH competencies | 68 |
-| HP | Hygiene promotion | 24 |
+| CORE | Core humanitarian WASH competencies | 66 |
+| HP | Hygiene promotion | 28 |
 | VC | Vector control | 14 |
-| EM | Excreta management | 39 |
-| SWS | Safe water supply | 29 |
+| EM | Excreta management | 38 |
+| SWS | Safe water supply | 30 |
 | SWM | Solid waste management | 43 |
 
 ---
