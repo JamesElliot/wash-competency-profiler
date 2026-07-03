@@ -9,8 +9,9 @@ import { getDomainById } from '../data/competencies';
 export function classifyResponse(
   response: Response,
 ): CompetencyScore['classification'] {
-  const { competence, importance } = response;
+  const { competence, importance, status } = response;
 
+  if (status !== 'answered') return 'skipped';
   if (competence === null || importance === null) return 'skipped';
   if (importance >= 4 && competence >= 4) return 'strength';
   if (importance >= 4 && competence <= 2) return 'development_priority';
@@ -22,7 +23,12 @@ export function scoreCompetency(
   item: CompetencyItem,
   response: Response | undefined,
 ): CompetencyScore {
-  if (!response || response.competence === null || response.importance === null) {
+  if (
+    !response ||
+    response.status !== 'answered' ||
+    response.competence === null ||
+    response.importance === null
+  ) {
     return {
       competencyId: item.id,
       domainId: item.domainId,
@@ -58,19 +64,31 @@ export function scoreDomain(
     scoreCompetency(item, responseMap.get(item.id)),
   );
 
-  const answered = itemScores.filter((s) => s.classification !== 'skipped');
+  const answered = items.filter((item) => {
+    const response = responseMap.get(item.id);
+    return (
+      response?.status === 'answered' &&
+      response.competence !== null &&
+      response.importance !== null
+    );
+  });
+  const notApplicableCount = items.filter(
+    (item) => responseMap.get(item.id)?.status === 'not_applicable',
+  ).length;
+  const unansweredCount = items.length - answered.length - notApplicableCount;
+
   const avgCompetence =
     answered.length > 0
-      ? answered.reduce((sum, s) => {
-          const r = responseMap.get(s.competencyId);
+      ? answered.reduce((sum, item) => {
+          const r = responseMap.get(item.id);
           return sum + (r?.competence ?? 0);
         }, 0) / answered.length
       : 0;
 
   const avgImportance =
     answered.length > 0
-      ? answered.reduce((sum, s) => {
-          const r = responseMap.get(s.competencyId);
+      ? answered.reduce((sum, item) => {
+          const r = responseMap.get(item.id);
           return sum + (r?.importance ?? 0);
         }, 0) / answered.length
       : 0;
@@ -85,6 +103,9 @@ export function scoreDomain(
     avgCompetence,
     avgImportance,
     aggregatePriority,
+    answeredCount: answered.length,
+    notApplicableCount,
+    unansweredCount,
     itemScores,
   };
 }
@@ -109,5 +130,11 @@ export function getStrengths(scores: DomainScore[]): CompetencyScore[] {
 export function getDevelopmentPriorities(scores: DomainScore[]): CompetencyScore[] {
   return scores.flatMap((d) =>
     d.itemScores.filter((s) => s.classification === 'development_priority'),
+  );
+}
+
+export function getMonitorItems(scores: DomainScore[]): CompetencyScore[] {
+  return scores.flatMap((d) =>
+    d.itemScores.filter((s) => s.classification === 'monitor'),
   );
 }

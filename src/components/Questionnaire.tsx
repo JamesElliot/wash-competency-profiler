@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { useAssessment } from '../context/AssessmentContext';
 import type { CompetencyItem } from '../types';
+import { APP_CONTENT } from '../data/appContent';
 
 // ── Likert labels ─────────────────────────────────────────────────────────────
 
@@ -88,14 +88,12 @@ function LikertScale({ name, value, onChange, labels, ariaLabel }: LikertProps) 
 
 // ── FeedbackLink ──────────────────────────────────────────────────────────────
 
-const REPO = 'JamesElliot/wash-competency-profiler';
-
 function FeedbackLink({ competencyId, competencyLabel }: { competencyId: string; competencyLabel: string }) {
   const title = encodeURIComponent(`Feedback: ${competencyId}`);
   const body = encodeURIComponent(
     `**Competency:** ${competencyId}\n**Description:** ${competencyLabel}\n\n---\n\n**My feedback:**\n\n<!-- Please describe your suggested change, correction, or comment below -->\n`,
   );
-  const url = `https://github.com/${REPO}/issues/new?title=${title}&body=${body}&labels=competency-feedback`;
+  const url = `https://github.com/${APP_CONTENT.competencyFeedbackRepo}/issues/new?title=${title}&body=${body}&labels=competency-feedback`;
 
   return (
     <a
@@ -119,33 +117,47 @@ function CompetencyCard({ item }: { item: CompetencyItem }) {
   const { state, dispatch } = useAssessment();
   const response = state.responses.find((r) => r.competencyId === item.id);
 
-  const [skipped, setSkipped] = useState(
-    () => response !== undefined && response.competence === null,
-  );
-
   const competence = (response?.competence ?? null) as LikertValue | null;
   const importance = (response?.importance ?? null) as LikertValue | null;
+  const notApplicable = response?.status === 'not_applicable';
 
   function handleCompetence(v: LikertValue) {
     dispatch({
       type: 'SET_RESPONSE',
-      payload: { competencyId: item.id, competence: v, importance: response?.importance ?? null },
+      payload: {
+        competencyId: item.id,
+        competence: v,
+        importance: response?.importance ?? null,
+        status: 'answered',
+        note: response?.note,
+      },
     });
   }
 
   function handleImportance(v: LikertValue) {
     dispatch({
       type: 'SET_RESPONSE',
-      payload: { competencyId: item.id, competence: response?.competence ?? null, importance: v },
+      payload: {
+        competencyId: item.id,
+        competence: response?.competence ?? null,
+        importance: v,
+        status: 'answered',
+        note: response?.note,
+      },
     });
   }
 
   function handleSkip(checked: boolean) {
-    setSkipped(checked);
     if (checked) {
       dispatch({
         type: 'SET_RESPONSE',
-        payload: { competencyId: item.id, competence: null, importance: null },
+        payload: {
+          competencyId: item.id,
+          competence: null,
+          importance: null,
+          status: 'not_applicable',
+          note: response?.note,
+        },
       });
     } else {
       dispatch({ type: 'CLEAR_RESPONSE', payload: item.id });
@@ -158,7 +170,7 @@ function CompetencyCard({ item }: { item: CompetencyItem }) {
       aria-labelledby={`label-${item.id}`}
       className={[
         'rounded-xl border p-5 space-y-4 transition-colors',
-        skipped ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200',
+        notApplicable ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200',
       ].join(' ')}
     >
       {/* Competency label */}
@@ -176,14 +188,14 @@ function CompetencyCard({ item }: { item: CompetencyItem }) {
       <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
         <input
           type="checkbox"
-          checked={skipped}
+          checked={notApplicable}
           onChange={(e) => handleSkip(e.target.checked)}
           className="w-4 h-4 rounded border-gray-300 text-primary-700 focus:ring-primary-500 focus:ring-offset-0"
         />
-        <span className="text-sm text-gray-500">Not applicable / Skip</span>
+        <span className="text-sm text-gray-500">Not applicable to my role</span>
       </label>
 
-      {skipped ? (
+      {notApplicable ? (
         <p className="text-sm text-gray-400 italic">
           This competency will be excluded from scoring.
         </p>

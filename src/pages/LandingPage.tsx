@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '../context/AssessmentContext';
+import { APP_CONTENT } from '../data/appContent';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -74,38 +75,28 @@ export default function LandingPage() {
 
         {/* Framework attribution + link */}
         <p>
-          This app is based on the{' '}
+          {APP_CONTENT.acknowledgement.split('Humanitarian WASH Competency Technical Framework')[0]}
           <a
-            href="https://redr.org.uk/publication/wash-competency-framework-for-low-resource-contexts/"
+            href={APP_CONTENT.frameworkUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-white transition-colors"
           >
             Humanitarian WASH Competency Technical Framework
           </a>
-          , developed under the WASH Roadmap Initiative. The app was developed by{' '}
-          James Brown, Dahdaleh Institute for Global Health Research, York University.
+          {APP_CONTENT.acknowledgement.split('Humanitarian WASH Competency Technical Framework')[1]}
         </p>
 
         {/* DoS disclaimer */}
         <p>
-          The original framework on which the app is built was funded in part by a
-          cooperative agreement (PRO-WASH &amp; SCALE) from the United States Department
-          of State. The opinions, findings, and conclusions stated herein are those of
-          the author(s) and do not necessarily reflect those of the United States
-          Department of State.
+          {APP_CONTENT.disclaimer}
         </p>
 
         {/* Contributor credits */}
         <p>
           <span className="text-white/60 uppercase tracking-wide text-[10px] font-semibold">Framework contributors</span>
           <br />
-          James Brown (Excreta Management), Ravjot Chana (Excreta Management),
-          Catherine Darriulat (Safe Water Supply and Vector Control), Lauren Enochs
-          (Hygiene), Nicole Weber (Coordination and Hygiene), and Christian Zurbrugg
-          (Solid Waste Management). Guidance and reviews provided by Francois Baillon,
-          Syed Imran Ali, Baudoin Luce, Alexandra Machado, Mari Paz Ortega, and
-          Guillaume Pierrehumbert.
+          {APP_CONTENT.contributorCredits}
         </p>
 
       </div>

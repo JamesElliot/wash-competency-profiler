@@ -1,23 +1,22 @@
 import { useState } from 'react';
 import { jsPDF } from 'jspdf';
 import type { RadarChartHandle } from './RadarChart';
-import type { DomainScore } from '../types';
-import { getStrengths, getDevelopmentPriorities } from '../lib/ScoringEngine';
-import { COMPETENCIES } from '../data/competencies';
+import type { AssessmentSession, DomainScore } from '../types';
+import {
+  buildExportAssessmentRecord,
+  type ExportAssessmentRecord,
+  type ExportCompetencyRow,
+} from '../lib/exportData';
+import { exportWordDocument } from '../lib/wordExport';
 
 type Props = {
   scores: DomainScore[];
+  session: AssessmentSession;
   name: string;
   startedAt: string;
   purpose: string;
   getChartRefs: () => Map<string, RadarChartHandle>;
 };
-
-const competencyMap = new Map(COMPETENCIES.map((c) => [c.id, c.label]));
-
-function getLabel(id: string): string {
-  return competencyMap.get(id) ?? id;
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -72,10 +71,11 @@ function footer(doc: jsPDF, pageNum: number, totalPages: number) {
 
 function drawSummaryTable(doc: jsPDF, scores: DomainScore[], startY: number): number {
   const cols = [
-    { label: 'Domain', w: CONTENT_W * 0.46 },
-    { label: 'Avg competence', w: CONTENT_W * 0.18, align: 'right' as const },
-    { label: 'Avg importance', w: CONTENT_W * 0.18, align: 'right' as const },
-    { label: 'Priority score', w: CONTENT_W * 0.18, align: 'right' as const },
+    { label: 'Domain', w: CONTENT_W * 0.38 },
+    { label: 'Assessed', w: CONTENT_W * 0.14, align: 'right' as const },
+    { label: 'Avg competence', w: CONTENT_W * 0.16, align: 'right' as const },
+    { label: 'Avg importance', w: CONTENT_W * 0.16, align: 'right' as const },
+    { label: 'Priority', w: CONTENT_W * 0.16, align: 'right' as const },
   ];
 
   const ROW_H = 8;
@@ -122,21 +122,27 @@ function drawSummaryTable(doc: jsPDF, scores: DomainScore[], startY: number): nu
     x += cols[0].w;
 
     doc.text(
-      d.avgCompetence > 0 ? d.avgCompetence.toFixed(1) : '—',
+      `${d.answeredCount}/${d.itemScores.length}`,
       x + cols[1].w - 2, y + 5.5, { align: 'right' }
     );
     x += cols[1].w;
 
     doc.text(
-      d.avgImportance > 0 ? d.avgImportance.toFixed(1) : '—',
+      d.answeredCount > 0 ? d.avgCompetence.toFixed(1) : '—',
       x + cols[2].w - 2, y + 5.5, { align: 'right' }
     );
     x += cols[2].w;
 
+    doc.text(
+      d.answeredCount > 0 ? d.avgImportance.toFixed(1) : '—',
+      x + cols[3].w - 2, y + 5.5, { align: 'right' }
+    );
+    x += cols[3].w;
+
     setColor(doc, priorityRgb, 'text');
     doc.text(
       priority > 0 ? String(Math.round(priority)) : '—',
-      x + cols[3].w - 2, y + 5.5, { align: 'right' }
+      x + cols[4].w - 2, y + 5.5, { align: 'right' }
     );
 
     y += ROW_H;
@@ -147,77 +153,89 @@ function drawSummaryTable(doc: jsPDF, scores: DomainScore[], startY: number): nu
 
 // ── Text section (strengths / priorities / recommendations) ───────────────────
 
-function drawTextSection(
-  doc: jsPDF,
-  strengths: ReturnType<typeof getStrengths>,
-  priorities: ReturnType<typeof getDevelopmentPriorities>,
-): void {
+function drawTextSection(doc: jsPDF, record: ExportAssessmentRecord): void {
   let y = 26;
 
-  // Section: Development priorities
-  if (priorities.length > 0) {
+  function ensureSpace(required = 24, title = 'Results') {
+    if (y > PAGE_H - required) {
+      doc.addPage();
+      header(doc, title);
+      y = 26;
+    }
+  }
+
+  function writeParagraph(text: string, indent = 0) {
+    const lines = doc.splitTextToSize(text, CONTENT_W - indent);
+    ensureSpace(lines.length * 5.5 + 8);
+    doc.text(lines, MARGIN + indent, y);
+    y += lines.length * 5.5 + 3;
+  }
+
+  function writeRows(
+    title: string,
+    rows: ExportCompetencyRow[],
+    colour: readonly [number, number, number],
+    options: { limit?: number; includePriority?: boolean; includeNotes?: boolean } = {},
+  ) {
+    if (rows.length === 0) return;
+
+    ensureSpace(36, title);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    setColor(doc, DANGER, 'text');
-    doc.text('DEVELOPMENT PRIORITIES', MARGIN, y);
+    setColor(doc, colour, 'text');
+    doc.text(title.toUpperCase(), MARGIN, y);
     y += 7;
 
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     setColor(doc, GRAY6, 'text');
 
-    const sorted = [...priorities].sort((a, b) => b.priority - a.priority);
-    for (const s of sorted) {
-      if (y > PAGE_H - 20) break;
-      const label = getLabel(s.competencyId);
-      const lines = doc.splitTextToSize(`• ${label} (Priority ${Math.round(s.priority)})`, CONTENT_W - 4);
-      doc.text(lines, MARGIN + 4, y);
-      y += lines.length * 5.5;
+    const visibleRows = options.limit ? rows.slice(0, options.limit) : rows;
+    for (const row of visibleRows) {
+      const suffix = options.includePriority
+        ? ` (Priority ${Math.round(row.priority)})`
+        : '';
+      writeParagraph(`• ${row.competencyId}: ${row.competencyText}${suffix}`, 4);
+      if (options.includeNotes && row.note.trim()) {
+        setColor(doc, GRAY4, 'text');
+        writeParagraph(`Note: ${row.note.trim()}`, 8);
+        setColor(doc, GRAY6, 'text');
+      }
+    }
+
+    if (options.limit && rows.length > options.limit) {
+      setColor(doc, GRAY4, 'text');
+      writeParagraph(`+ ${rows.length - options.limit} more`, 4);
+      setColor(doc, GRAY6, 'text');
     }
     y += 6;
   }
 
-  // Section: Strengths
-  if (strengths.length > 0) {
-    if (y > PAGE_H - 40) {
-      doc.addPage();
-      header(doc, 'Strengths');
-      y = 26;
-    }
+  writeRows('Development priorities', record.developmentPriorities, DANGER, {
+    includePriority: true,
+    includeNotes: true,
+  });
+  writeRows('Maintain and monitor', record.monitorItems, [217, 119, 6], {
+    includePriority: true,
+    limit: 30,
+  });
+  writeRows('Strengths to use or share', record.strengths, TEAL, { limit: 30 });
+  writeRows('Not applicable', record.notApplicableItems, GRAY4, { limit: 40 });
 
+  if (record.generalDevelopmentNotes.trim()) {
+    ensureSpace(40, 'Notes');
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    setColor(doc, TEAL, 'text');
-    doc.text('STRENGTHS', MARGIN, y);
+    setColor(doc, PRIMARY, 'text');
+    doc.text('PROFESSIONAL DEVELOPMENT NOTES', MARGIN, y);
     y += 7;
-
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     setColor(doc, GRAY6, 'text');
-
-    for (const s of strengths.slice(0, 20)) {
-      if (y > PAGE_H - 20) break;
-      const label = getLabel(s.competencyId);
-      const lines = doc.splitTextToSize(`★ ${label}`, CONTENT_W - 4);
-      doc.text(lines, MARGIN + 4, y);
-      y += lines.length * 5.5;
-    }
-    if (strengths.length > 20) {
-      y += 2;
-      setColor(doc, GRAY4, 'text');
-      doc.setFontSize(8);
-      doc.text(`+ ${strengths.length - 20} more strengths`, MARGIN + 4, y);
-    }
-    y += 8;
+    writeParagraph(record.generalDevelopmentNotes.trim());
   }
 
-  // Section: Recommendations
-  if (y > PAGE_H - 40) {
-    doc.addPage();
-    header(doc, 'Recommendations');
-    y = 26;
-  }
-
+  ensureSpace(40, 'Recommendations');
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   setColor(doc, PRIMARY, 'text');
@@ -228,41 +246,44 @@ function drawTextSection(
   doc.setFont('helvetica', 'normal');
   setColor(doc, GRAY6, 'text');
 
-  if (priorities.length === 0 && strengths.length === 0) {
-    const lines = doc.splitTextToSize(
-      'No high-priority gaps identified. Focus on maintaining your current strengths and consider taking on mentoring opportunities in areas where you excel.',
-      CONTENT_W,
+  if (record.developmentPriorities.length === 0 && record.strengths.length === 0) {
+    writeParagraph(
+      'No high-priority gaps identified. Focus on maintaining assessed strengths and monitoring important competencies where you are currently proficient.',
     );
-    doc.text(lines, MARGIN, y);
   } else {
-    if (priorities.length > 0) {
-      const topLabel = getLabel(priorities[0].competencyId);
-      const lines = doc.splitTextToSize(
-        `Focus your development on the highest-priority competency: ${topLabel}. Consider formal training, coaching, or stretch assignments to build capability in this area.`,
-        CONTENT_W,
+    if (record.developmentPriorities.length > 0) {
+      const topPriority = record.developmentPriorities[0];
+      writeParagraph(
+        `Focus development on the highest-priority competency: ${topPriority.competencyText}. Consider formal training, coaching, mentoring, or supported practice to build capability in this area.`,
       );
-      doc.text(lines, MARGIN, y);
-      y += lines.length * 5.5 + 4;
     }
-    if (strengths.length > 0 && y < PAGE_H - 20) {
-      const topStrength = getLabel(strengths[0].competencyId);
-      const lines = doc.splitTextToSize(
-        `Leverage your strength in ${topStrength} by mentoring others and seeking opportunities to apply this expertise in leadership or advisory roles.`,
-        CONTENT_W,
+    if (record.strengths.length > 0) {
+      const topStrength = record.strengths[0];
+      writeParagraph(
+        `Use your strength in ${topStrength.competencyText} by mentoring others or seeking opportunities to apply this expertise in advisory, training, or leadership roles.`,
       );
-      setColor(doc, GRAY6, 'text');
-      doc.text(lines, MARGIN, y);
     }
   }
+
+  ensureSpace(50, 'Acknowledgements');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, PRIMARY, 'text');
+  doc.text('FRAMEWORK AND ACKNOWLEDGEMENTS', MARGIN, y);
+  y += 7;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  setColor(doc, GRAY6, 'text');
+  writeParagraph(`Framework version: ${record.metadata.frameworkVersion}`);
+  writeParagraph(record.acknowledgement);
+  writeParagraph(record.disclaimer);
 }
 
 // ── Main export function ──────────────────────────────────────────────────────
 
 async function buildPDF(props: Props): Promise<void> {
-  const { scores, name, startedAt, purpose, getChartRefs } = props;
-
-  const strengths  = getStrengths(scores);
-  const priorities = getDevelopmentPriorities(scores).sort((a, b) => b.priority - a.priority);
+  const { scores, session, name, startedAt, purpose, getChartRefs } = props;
+  const record = buildExportAssessmentRecord(session, scores, name);
 
   const chartRefs = getChartRefs();
   const domainCount = scores.length;
@@ -341,7 +362,7 @@ async function buildPDF(props: Props): Promise<void> {
   // ── Final page: Strengths, priorities, recommendations ─────────────────────
   doc.addPage();
   header(doc, 'Strengths & Priorities');
-  drawTextSection(doc, strengths, priorities);
+  drawTextSection(doc, record);
   footer(doc, pageNum, totalPages);
 
   // ── Save ────────────────────────────────────────────────────────────────────
@@ -352,39 +373,82 @@ async function buildPDF(props: Props): Promise<void> {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ExportButton(props: Props) {
-  const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [wordLoading, setWordLoading] = useState(false);
 
-  async function handleClick() {
-    setLoading(true);
+  async function handlePdfClick() {
+    setPdfLoading(true);
     try {
       await buildPDF(props);
     } finally {
-      setLoading(false);
+      setPdfLoading(false);
+    }
+  }
+
+  async function handleWordClick() {
+    setWordLoading(true);
+    try {
+      const record = buildExportAssessmentRecord(props.session, props.scores, props.name);
+      await exportWordDocument(record);
+    } finally {
+      setWordLoading(false);
     }
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className="inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-primary-700 text-white font-medium py-2.5 px-5 rounded-lg text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      {loading ? (
-        <>
-          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
-          Generating PDF…
-        </>
-      ) : (
-        <>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
-          Download PDF
-        </>
-      )}
-    </button>
+    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      <button
+        onClick={handlePdfClick}
+        disabled={pdfLoading || wordLoading}
+        className="inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-primary-700 text-white font-medium py-2.5 px-5 rounded-lg text-sm hover:bg-primary-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {pdfLoading ? (
+          <>
+            <Spinner />
+            Generating PDF…
+          </>
+        ) : (
+          <>
+            <DownloadIcon />
+            Download PDF
+          </>
+        )}
+      </button>
+
+      <button
+        onClick={handleWordClick}
+        disabled={pdfLoading || wordLoading}
+        className="inline-flex items-center justify-center gap-2 w-full sm:w-auto border border-primary-200 bg-white text-primary-700 font-medium py-2.5 px-5 rounded-lg text-sm hover:bg-primary-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {wordLoading ? (
+          <>
+            <Spinner />
+            Generating Word…
+          </>
+        ) : (
+          <>
+            <DownloadIcon />
+            Download Word
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
   );
 }

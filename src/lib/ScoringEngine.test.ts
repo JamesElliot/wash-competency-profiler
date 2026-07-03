@@ -5,6 +5,7 @@ import {
   scoreDomain,
   getStrengths,
   getDevelopmentPriorities,
+  getMonitorItems,
 } from './ScoringEngine';
 import type { CompetencyItem, CompetencyScore, Response } from '../types';
 
@@ -22,7 +23,8 @@ const resp = (
   competencyId: string,
   competence: Response['competence'],
   importance: Response['importance'],
-): Response => ({ competencyId, competence, importance });
+  status: Response['status'] = 'answered',
+): Response => ({ competencyId, competence, importance, status });
 
 // ── classifyResponse ──────────────────────────────────────────────────────────
 
@@ -37,6 +39,14 @@ describe('classifyResponse', () => {
 
   it('returns skipped when both are null', () => {
     expect(classifyResponse(resp('x', null, null))).toBe('skipped');
+  });
+
+  it('returns skipped when response is not applicable', () => {
+    expect(classifyResponse(resp('x', null, null, 'not_applicable'))).toBe('skipped');
+  });
+
+  it('returns skipped when response is unanswered', () => {
+    expect(classifyResponse(resp('x', null, null, 'unanswered'))).toBe('skipped');
   });
 
   it('returns strength when competence=4 AND importance=4 (boundary)', () => {
@@ -108,6 +118,16 @@ describe('scoreCompetency', () => {
     expect(score.classification).toBe('skipped');
   });
 
+  it('returns skipped score when response is not applicable', () => {
+    const score = scoreCompetency(
+      item('CORE-01-01'),
+      resp('CORE-01-01', null, null, 'not_applicable'),
+    );
+    expect(score.classification).toBe('skipped');
+    expect(score.gap).toBe(0);
+    expect(score.priority).toBe(0);
+  });
+
   it('carries through domainId, themeId, subThemeId from the item', () => {
     const customItem: CompetencyItem = {
       id: 'EM-03a-01',
@@ -132,19 +152,39 @@ describe('scoreDomain', () => {
     const responses: Response[] = [
       resp('CORE-01-01', 4, 5),  // answered
       resp('CORE-01-02', 2, 5),  // answered
-      resp('CORE-01-03', null, null), // skipped
+      resp('CORE-01-03', null, null, 'not_applicable'), // N/A
     ];
     const domain = scoreDomain('core', items, responses);
     // avg competence = (4 + 2) / 2 = 3
     expect(domain.avgCompetence).toBeCloseTo(3);
     // avg importance = (5 + 5) / 2 = 5
     expect(domain.avgImportance).toBeCloseTo(5);
+    expect(domain.answeredCount).toBe(2);
+    expect(domain.notApplicableCount).toBe(1);
+    expect(domain.unansweredCount).toBe(0);
   });
 
   it('returns 0 averages when all items are skipped', () => {
     const domain = scoreDomain('core', items, []);
     expect(domain.avgCompetence).toBe(0);
     expect(domain.avgImportance).toBe(0);
+    expect(domain.answeredCount).toBe(0);
+    expect(domain.notApplicableCount).toBe(0);
+    expect(domain.unansweredCount).toBe(3);
+  });
+
+  it('returns 0 averages when all items are not applicable', () => {
+    const responses: Response[] = [
+      resp('CORE-01-01', null, null, 'not_applicable'),
+      resp('CORE-01-02', null, null, 'not_applicable'),
+      resp('CORE-01-03', null, null, 'not_applicable'),
+    ];
+    const domain = scoreDomain('core', items, responses);
+    expect(domain.avgCompetence).toBe(0);
+    expect(domain.avgImportance).toBe(0);
+    expect(domain.answeredCount).toBe(0);
+    expect(domain.notApplicableCount).toBe(3);
+    expect(domain.unansweredCount).toBe(0);
   });
 
   it('sums aggregatePriority correctly', () => {
@@ -193,6 +233,9 @@ const mixedDomainScores = [
     avgCompetence: 3,
     avgImportance: 4,
     aggregatePriority: 10,
+    answeredCount: 4,
+    notApplicableCount: 1,
+    unansweredCount: 0,
     itemScores: [
       makeScore('A', 'strength'),
       makeScore('B', 'development_priority'),
@@ -207,6 +250,9 @@ const mixedDomainScores = [
     avgCompetence: 2,
     avgImportance: 5,
     aggregatePriority: 20,
+    answeredCount: 2,
+    notApplicableCount: 0,
+    unansweredCount: 0,
     itemScores: [
       makeScore('F', 'strength'),
       makeScore('G', 'development_priority'),
@@ -239,5 +285,12 @@ describe('getDevelopmentPriorities', () => {
       { ...mixedDomainScores[0]!, itemScores: [makeScore('X', 'strength')] },
     ];
     expect(getDevelopmentPriorities(noPriorities)).toHaveLength(0);
+  });
+});
+
+describe('getMonitorItems', () => {
+  it('returns only monitor-classified scores across all domains', () => {
+    const result = getMonitorItems(mixedDomainScores);
+    expect(result.map((s) => s.competencyId)).toEqual(['C']);
   });
 });

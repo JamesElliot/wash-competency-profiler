@@ -4,6 +4,7 @@ import type { CompetencyScore } from '../types';
 type Props = {
   strengths: CompetencyScore[];
   priorities: CompetencyScore[];
+  monitorItems: CompetencyScore[];
 };
 
 const competencyMap = new Map(COMPETENCIES.map((c) => [c.id, c.label]));
@@ -12,8 +13,8 @@ function getLabel(id: string): string {
   return competencyMap.get(id) ?? id;
 }
 
-export default function RecommendationPanel({ strengths, priorities }: Props) {
-  const hasContent = priorities.length > 0 || strengths.length > 0;
+export default function RecommendationPanel({ strengths, priorities, monitorItems }: Props) {
+  const hasContent = priorities.length > 0 || strengths.length > 0 || monitorItems.length > 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
@@ -44,6 +45,32 @@ export default function RecommendationPanel({ strengths, priorities }: Props) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {monitorItems.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold text-warning-600 uppercase tracking-wider">
+            Maintain and monitor
+          </h4>
+          <ul className="space-y-2.5">
+            {monitorItems.slice(0, 8).map((s) => (
+              <li key={s.competencyId} className="flex gap-2.5">
+                <span className="flex-shrink-0 mt-0.5 w-4 h-4 rounded-full bg-warning-500 flex items-center justify-center">
+                  <span className="text-white text-xs font-bold leading-none">·</span>
+                </span>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  <span className="font-semibold">Maintain and monitor:</span>{' '}
+                  {getLabel(s.competencyId)}
+                </p>
+              </li>
+            ))}
+          </ul>
+          {monitorItems.length > 8 && (
+            <p className="text-xs text-gray-400 pl-6">
+              + {monitorItems.length - 8} more monitor items listed above
+            </p>
+          )}
         </div>
       )}
 

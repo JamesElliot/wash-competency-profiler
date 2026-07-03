@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '../context/AssessmentContext';
 import ResultsDashboard, { type ResultsDashboardHandle } from '../components/ResultsDashboard';
 import ExportButton from '../components/ExportButton';
+import { APP_CONTENT } from '../data/appContent';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -85,9 +86,18 @@ export default function ResultsPage() {
                   {state.purpose === 'current_role' ? 'Assess current role' : 'Plan for future goals'}
                 </p>
               </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Framework version
+                </p>
+                <p className="text-sm text-gray-700">
+                  {APP_CONTENT.frameworkVersion}
+                </p>
+              </div>
             </div>
             <ExportButton
               scores={state.scores}
+              session={state}
               name={name}
               startedAt={state.startedAt}
               purpose={state.purpose ?? ''}
@@ -95,6 +105,38 @@ export default function ResultsPage() {
             />
           </div>
         </div>
+
+        <section className="bg-white rounded-xl border border-gray-200 p-6">
+          <label
+            htmlFor="development-notes"
+            className="text-base font-bold text-gray-900 block mb-2"
+          >
+            Professional development notes
+          </label>
+          <p className="text-sm text-gray-500 mb-3">
+            Capture training, mentoring, practice opportunities, or follow-up actions you want to pursue.
+          </p>
+          <textarea
+            id="development-notes"
+            value={state.generalDevelopmentNotes}
+            onChange={(event) =>
+              dispatch({ type: 'SET_GENERAL_NOTES', payload: event.target.value })
+            }
+            rows={5}
+            placeholder="For example: seek mentoring on water quality monitoring, join a hygiene promotion training, or practise using assessment tools in the next response."
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          <div className="mt-4">
+            <a
+              href={`${APP_CONTENT.feedbackIssueUrl}?title=${encodeURIComponent('Pilot feedback')}&labels=pilot-feedback`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-sm font-medium text-primary-700 hover:text-primary-900"
+            >
+              Share feedback on the assessment experience
+            </a>
+          </div>
+        </section>
 
         {/* Dashboard */}
         <ResultsDashboard

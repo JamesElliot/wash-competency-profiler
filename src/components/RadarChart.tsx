@@ -54,13 +54,22 @@ const RadarChart = forwardRef<RadarChartHandle, Props>(function RadarChart(
 
   const responseMap = new Map(responses.map((r) => [r.competencyId, r]));
 
-  const data = domain.itemScores.map((score) => {
+  const assessedScores = domain.itemScores.filter((score) => {
+    const r = responseMap.get(score.competencyId);
+    return (
+      r?.status === 'answered' &&
+      r.competence !== null &&
+      r.importance !== null
+    );
+  });
+
+  const data = assessedScores.map((score) => {
     const r = responseMap.get(score.competencyId);
     return {
       subject: shortId(score.competencyId),
       competencyId: score.competencyId,
-      competence: r?.competence ?? 0,
-      importance: r?.importance ?? 0,
+      competence: r?.competence,
+      importance: r?.importance,
       fullMark: 5,
     };
   });
@@ -72,14 +81,29 @@ const RadarChart = forwardRef<RadarChartHandle, Props>(function RadarChart(
     <div ref={containerRef} className="bg-white rounded-xl border border-gray-100 p-4">
       <h3 className="text-sm font-semibold text-gray-700 mb-1">{domain.domainLabel}</h3>
       <p className="text-xs text-gray-400 mb-3">
-        Avg competence: {domain.avgCompetence.toFixed(1)} · Avg importance:{' '}
-        {domain.avgImportance.toFixed(1)}
+        {domain.answeredCount > 0 ? (
+          <>
+            Avg competence: {domain.avgCompetence.toFixed(1)} · Avg importance:{' '}
+            {domain.avgImportance.toFixed(1)} · {domain.answeredCount} assessed
+          </>
+        ) : (
+          <>No applicable competencies assessed</>
+        )}
       </p>
 
       <div
         role="img"
-        aria-label={`Radar chart for ${domain.domainLabel}. Average competence ${domain.avgCompetence.toFixed(1)}, average importance ${domain.avgImportance.toFixed(1)}.`}
+        aria-label={
+          domain.answeredCount > 0
+            ? `Radar chart for ${domain.domainLabel}. Average competence ${domain.avgCompetence.toFixed(1)}, average importance ${domain.avgImportance.toFixed(1)}.`
+            : `No applicable competencies assessed for ${domain.domainLabel}.`
+        }
       >
+      {data.length === 0 ? (
+        <div className="h-[300px] flex items-center justify-center text-sm text-gray-400 italic">
+          Mark at least one competency as applicable to show the profile chart.
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height={300}>
         <RechartsRadarChart
           data={data}
@@ -126,7 +150,7 @@ const RadarChart = forwardRef<RadarChartHandle, Props>(function RadarChart(
 
           <Tooltip
             formatter={(value: number, name: string) => [
-              value === 0 ? 'Not rated' : value,
+              value ?? 'Not rated',
               name,
             ]}
             labelFormatter={(label: string) => `Item: ${label}`}
@@ -140,6 +164,7 @@ const RadarChart = forwardRef<RadarChartHandle, Props>(function RadarChart(
           />
         </RechartsRadarChart>
       </ResponsiveContainer>
+      )}
       </div>
     </div>
   );

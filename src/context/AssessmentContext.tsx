@@ -21,20 +21,29 @@ type Action =
   | { type: 'SET_DOMAINS'; payload: string[] }
   | { type: 'SET_RESPONSE'; payload: Response }
   | { type: 'CLEAR_RESPONSE'; payload: string }   // payload = competencyId
+  | { type: 'SET_GENERAL_NOTES'; payload: string }
+  | { type: 'SET_RESPONSE_NOTE'; payload: { competencyId: string; note: string } }
   | { type: 'SET_SCORES'; payload: DomainScore[] }
   | { type: 'RESET' };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function freshSession(): State {
+  const now = new Date().toISOString();
   return {
     sessionId: generateSessionId(),
-    startedAt: new Date().toISOString(),
+    startedAt: now,
+    updatedAt: now,
     purpose: null,
     selectedDomainIds: [],
     responses: [],
+    generalDevelopmentNotes: '',
     scores: null,
   };
+}
+
+function touch<T extends State>(state: T): T {
+  return { ...state, updatedAt: new Date().toISOString() };
 }
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
@@ -42,10 +51,10 @@ function freshSession(): State {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SET_PURPOSE':
-      return { ...state, scores: null, purpose: action.payload };
+      return touch({ ...state, scores: null, purpose: action.payload });
 
     case 'SET_DOMAINS':
-      return { ...state, scores: null, selectedDomainIds: action.payload };
+      return touch({ ...state, scores: null, selectedDomainIds: action.payload });
 
     case 'SET_RESPONSE': {
       const idx = state.responses.findIndex(
@@ -55,18 +64,40 @@ function reducer(state: State, action: Action): State {
         idx >= 0
           ? state.responses.map((r, i) => (i === idx ? action.payload : r))
           : [...state.responses, action.payload];
-      return { ...state, scores: null, responses };
+      return touch({ ...state, scores: null, responses });
     }
 
     case 'CLEAR_RESPONSE':
-      return {
+      return touch({
         ...state,
         scores: null,
         responses: state.responses.filter((r) => r.competencyId !== action.payload),
+      });
+
+    case 'SET_GENERAL_NOTES':
+      return touch({ ...state, generalDevelopmentNotes: action.payload });
+
+    case 'SET_RESPONSE_NOTE': {
+      const idx = state.responses.findIndex(
+        (r) => r.competencyId === action.payload.competencyId,
+      );
+      const fallback: Response = {
+        competencyId: action.payload.competencyId,
+        competence: null,
+        importance: null,
+        status: 'unanswered',
       };
+      const responses =
+        idx >= 0
+          ? state.responses.map((r, i) =>
+              i === idx ? { ...r, note: action.payload.note } : r,
+            )
+          : [...state.responses, { ...fallback, note: action.payload.note }];
+      return touch({ ...state, responses });
+    }
 
     case 'SET_SCORES':
-      return { ...state, scores: action.payload };
+      return touch({ ...state, scores: action.payload });
 
     case 'RESET':
       return freshSession();

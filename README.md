@@ -2,7 +2,7 @@
 
 A structured self-assessment tool for humanitarian WASH practitioners. Evaluate your competencies across core and technical domains, visualise strengths and gaps, and get tailored development recommendations.
 
-**Live site:** [wash-competency-profiler.netlify.app](https://wash-competency-profiler.netlify.app) *(update with your custom domain once configured)*
+**Live site:** [wash-competency-profiler.netlify.app](https://wash-competency-profiler.netlify.app)
 
 ---
 
@@ -10,9 +10,11 @@ A structured self-assessment tool for humanitarian WASH practitioners. Evaluate 
 
 - **219 competencies** across 6 WASH domains (Core, Hygiene Promotion, Vector Control, Excreta Management, Safe Water Supply, Solid Waste Management)
 - **Dual Likert scales** — rate both your current competence level and the importance of each competency to your role
+- **Explicit N/A handling** — mark competencies as not applicable to your role and exclude them from scoring
 - **Radar chart visualisation** — per-domain competency profiles with competence vs. importance overlay
 - **Priority scoring** — automatically surfaces high-priority development gaps (high importance, low competence)
-- **PDF export** — download a full results report including charts, domain summary table, strengths, and priorities
+- **PDF and Word export** — download a polished PDF or an editable Word professional development record
+- **Development notes** — capture general reflections and priority-specific action notes
 - **Local persistence** — responses auto-save to the browser; resume an incomplete assessment at any time
 - **Competency feedback** — flag any competency for review via a pre-filled GitHub issue
 
@@ -69,6 +71,7 @@ npm test            # Run unit tests (Vitest)
 | Styling | Tailwind CSS v4 |
 | Charts | Recharts 2 |
 | PDF export | jsPDF 4 + html2canvas |
+| Word export | docx + file-saver |
 | CSV parsing | PapaParse 5 |
 | Testing | Vitest |
 
@@ -80,7 +83,7 @@ npm test            # Run unit tests (Vitest)
 src/
 ├── components/
 │   ├── ErrorBoundary.tsx      # Top-level error boundary
-│   ├── ExportButton.tsx       # PDF generation
+│   ├── ExportButton.tsx       # PDF and Word generation controls
 │   ├── ProgressBar.tsx        # Assessment progress indicator
 │   ├── Questionnaire.tsx      # Competency cards + Likert scales
 │   ├── RadarChart.tsx         # Per-domain radar chart
@@ -89,12 +92,15 @@ src/
 ├── context/
 │   └── AssessmentContext.tsx  # Global state + localStorage persistence
 ├── data/
+│   ├── appContent.ts          # Framework metadata, feedback links, acknowledgements
 │   ├── Competencies.csv       # Source competency data
 │   └── competencies.ts        # Parsed data + lookup helpers
 ├── lib/
+│   ├── exportData.ts          # Shared report data model for exports
 │   ├── ScoringEngine.ts       # Gap/priority scoring logic
-│   ├── ScoringEngine.test.ts  # Unit tests (26 passing)
-│   └── storage.ts             # localStorage helpers
+│   ├── ScoringEngine.test.ts  # Unit tests
+│   ├── storage.ts             # localStorage helpers
+│   └── wordExport.ts          # Editable DOCX export
 ├── pages/
 │   ├── LandingPage.tsx
 │   ├── SetupPage.tsx
@@ -112,13 +118,11 @@ The competency framework is stored in `src/data/Competencies.csv`. Each row has 
 
 | Column | Description |
 |--------|-------------|
-| `Domain ID` | Domain code (e.g. `CORE`, `HP`) |
+| `Code` | Unique competency ID (e.g. `CORE-01-01`) |
 | `Domain` | Domain full name |
-| `Theme ID` | Theme code |
 | `Theme` | Theme name |
 | `Sub-theme` | Sub-theme (optional grouping) |
-| `Competency ID` | Unique ID (e.g. `CORE-01-01`) |
-| `Competency` | Competency statement |
+| `Competency activity` | Competency statement |
 
 To update or extend the competency framework, edit the CSV and restart the dev server.
 
@@ -126,15 +130,17 @@ To update or extend the competency framework, edit the CSV and restart the dev s
 
 ## Scoring methodology
 
-Priority score = **importance × (5 − competence)**
+Gap score = **importance − competence**
+
+Priority score = **gap × importance**
 
 - **Strength:** competence ≥ 4 and importance ≥ 4
 - **Development priority:** importance ≥ 4 and competence ≤ 2
-- **Monitor:** importance ≥ 3 and competence = 3
-- **Low priority:** importance < 3 or competence ≥ 4 (when not a strength)
-- **Skipped:** excluded from all averages and scoring
+- **Maintain and monitor:** importance ≥ 4 and competence = 3
+- **Low priority:** importance ≤ 3
+- **Not applicable / unanswered:** excluded from all averages and scoring
 
-Domain aggregate priority is the sum of individual item priority scores across all non-skipped items.
+Domain aggregate priority is the sum of individual item priority scores across all assessed items.
 
 ---
 
@@ -142,7 +148,7 @@ Domain aggregate priority is the sum of individual item priority scores across a
 
 Each competency card has a flag icon that opens a pre-filled GitHub issue. This is the preferred way to suggest corrections, additions, or rewording of specific competencies.
 
-For general bugs or feature requests, please [open an issue](https://github.com/JamesElliot/wash-competency-profiler/issues/new) manually.
+For general bugs, pilot feedback, or feature requests, please [open an issue](https://github.com/JamesElliot/wash-competency-profiler/issues/new) manually or use the feedback link on the results page.
 
 ---
 

@@ -25,10 +25,14 @@ export type CompetencyItem = {
   label: string;
 };
 
+export type ResponseStatus = 'answered' | 'not_applicable' | 'unanswered';
+
 export type Response = {
   competencyId: string;
   competence: 1 | 2 | 3 | 4 | 5 | null;
   importance: 1 | 2 | 3 | 4 | 5 | null;
+  status: ResponseStatus;
+  note?: string;
 };
 
 export type CompetencyScore = {
@@ -52,14 +56,19 @@ export type DomainScore = {
   avgCompetence: number;
   avgImportance: number;
   aggregatePriority: number;
+  answeredCount: number;
+  notApplicableCount: number;
+  unansweredCount: number;
   itemScores: CompetencyScore[];
 };
 
 export type AssessmentSession = {
   sessionId: string;
   startedAt: string;
+  updatedAt: string;
   purpose: 'current_role' | 'future_goals' | null;
   selectedDomainIds: string[];
   responses: Response[];
+  generalDevelopmentNotes: string;
   scores: DomainScore[] | null;
 };
